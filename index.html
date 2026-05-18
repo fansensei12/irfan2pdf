@@ -32,21 +32,44 @@
             <p class="text-xs text-gray-400 mt-1">Mendukung semua ukuran gambar (A4, F4, 16:9, Persegi, dll)</p>
         </div>
 
-        <!-- Pratinjau Gambar Dinamis -->
-        <div id="previewSection" class="hidden mb-6">
-            <p class="text-xs uppercase tracking-wider text-red-400 font-bold mb-3 text-left">Preview & Dimensi Asli</p>
-            <!-- Menggunakan susunan grid yang fleksibel -->
+        <!-- Bagian Input Nama & Preview (Hanya Muncul Jika Gambar Sudah Ada) -->
+        <div id="previewSection" class="hidden mb-6 text-left">
+            <!-- Input Nama File Kustom -->
+            <div class="mb-4">
+                <label for="pdfNameInput" class="block text-xs uppercase tracking-wider text-red-400 font-bold mb-2">Nama File PDF Hasil</label>
+                <input type="text" id="pdfNameInput" placeholder="Masukkan nama file (Contoh: Irfan - Tugas PKn)" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-red-500 transition-colors duration-200">
+            </div>
+
+            <p class="text-xs uppercase tracking-wider text-red-400 font-bold mb-3">Preview & Dimensi Asli</p>
             <div id="previewContainer" class="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-64 overflow-y-auto p-3 bg-zinc-900 border border-zinc-800 rounded-lg"></div>
         </div>
 
-        <!-- Tombol Aksi -->
-        <button id="convertBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-[0_4px_20px_rgba(239,68,68,0.4)] tracking-wider text-sm uppercase transition-all duration-200 cursor-pointer disabled:bg-zinc-700 disabled:text-zinc-500 disabled:shadow-none disabled:cursor-not-allowed hidden">
-            Convert & Download Smart PDF
-        </button>
+        <!-- Grup Tombol Aksi (Convert dan Reset) -->
+        <div id="actionButtons" class="grid grid-cols-3 gap-3 hidden">
+            <!-- Tombol Batal / Hapus Semua Gambar -->
+            <button id="resetBtn" class="bg-zinc-800 hover:bg-zinc-700 text-gray-300 font-bold py-3.5 px-4 rounded-xl tracking-wider text-xs uppercase transition-all duration-200 cursor-pointer">
+                Hapus Semua
+            </button>
+            
+            <!-- Tombol Utama Konversi -->
+            <button id="convertBtn" class="col-span-2 bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-[0_4px_20px_rgba(239,68,68,0.4)] tracking-wider text-sm uppercase transition-all duration-200 cursor-pointer disabled:bg-zinc-700 disabled:text-zinc-500 disabled:shadow-none disabled:cursor-not-allowed">
+                Convert & Download PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- Tombol Tautan Aktif Ke Portal Tugas -->
+    <div class="mt-6 w-full max-w-2xl px-2">
+        <a href="https://fansensei12.github.io/Portal-Sumatif-PKn/" target="_blank" class="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-[0_4px_15px_rgba(37,99,235,0.3)] tracking-wide text-sm uppercase transition-all duration-200 text-center">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Form Pengumpulan Tugas
+        </a>
     </div>
 
     <!-- Footer -->
-    <p class="text-[10px] uppercase tracking-widest text-gray-400 mt-6">100% Local Conversion • Multi-Format Auto-Detection</p>
+    <p class="text-[10px] uppercase tracking-widest text-gray-500 mt-6">100% Local Conversion • Multi-Format Auto-Detection</p>
 
     <script>
         const { jsPDF } = window.jspdf;
@@ -54,8 +77,11 @@
         const fileInput = document.getElementById('fileInput');
         const dropzone = document.getElementById('dropzone');
         const previewSection = document.getElementById('previewSection');
+        const pdfNameInput = document.getElementById('pdfNameInput');
         const previewContainer = document.getElementById('previewContainer');
+        const actionButtons = document.getElementById('actionButtons');
         const convertBtn = document.getElementById('convertBtn');
+        const resetBtn = document.getElementById('resetBtn');
         
         let uploadedFiles = [];
 
@@ -73,33 +99,55 @@
         dropzone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropzone.classList.remove('bg-zinc-900', 'border-red-400');
-            handleFiles(e.dataTransfer.files);
+            addFiles(e.dataTransfer.files);
         });
 
         fileInput.addEventListener('change', (e) => {
-            handleFiles(e.target.files);
+            addFiles(e.target.files);
         });
 
-        function handleFiles(files) {
-            uploadedFiles = Array.from(files).filter(file => file.type === "image/jpeg" || file.type === "image/png");
+        function addFiles(files) {
+            const validFiles = Array.from(files).filter(file => file.type === "image/jpeg" || file.type === "image/png");
+            uploadedFiles = [...uploadedFiles, ...validFiles];
+            renderPreviews();
+        }
 
-            if (uploadedFiles.length === 0) return;
+        function removeFile(index) {
+            uploadedFiles.splice(index, 1);
+            renderPreviews();
+        }
 
+        resetBtn.addEventListener('click', () => {
+            uploadedFiles = [];
+            fileInput.value = '';
+            pdfNameInput.value = '';
+            renderPreviews();
+        });
+
+        function renderPreviews() {
             previewContainer.innerHTML = '';
+
+            if (uploadedFiles.length === 0) {
+                previewSection.classList.add('hidden');
+                actionButtons.classList.add('hidden');
+                fileInput.value = '';
+                pdfNameInput.value = '';
+                return;
+            }
+
             previewSection.classList.remove('hidden');
-            convertBtn.classList.remove('hidden');
+            actionButtons.classList.remove('hidden');
 
             uploadedFiles.forEach((file, index) => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const imgWrapper = document.createElement('div');
-                    imgWrapper.className = 'relative aspect-square border border-zinc-700 rounded-md overflow-hidden bg-zinc-950 shadow-sm flex items-center justify-center';
+                    imgWrapper.className = 'relative aspect-square border border-zinc-700 rounded-md overflow-hidden bg-zinc-950 shadow-sm flex items-center justify-center group';
                     
                     const img = document.createElement('img');
                     img.src = e.target.result;
                     img.className = 'max-w-full max-h-full object-contain';
                     
-                    // Deteksi rasio asli gambar untuk ditampilkan pada badge teks preview
                     img.onload = function() {
                         const width = this.naturalWidth;
                         const height = this.naturalHeight;
@@ -107,10 +155,10 @@
                         
                         const ratio = width / height;
                         if (Math.abs(ratio - (16/9)) < 0.05) typeLabel = "16:9";
-                        else if (Math.abs(ratio - (9/16)) < 0.05) typeLabel = "16:9 Vertikal";
-                        else if (Math.abs(ratio - 1) < 0.01) typeLabel = "1:1 Kotak";
-                        else if (ratio > 1) typeLabel = "Landscape";
-                        else typeLabel = "Potret";
+                        else if (Math.abs(ratio - (9/16)) < 0.05) typeLabel = "16:9 V";
+                        else if (Math.abs(ratio - 1) < 0.01) typeLabel = "1:1";
+                        else if (ratio > 1) typeLabel = "Lndscp";
+                        else typeLabel = "Ptrt";
 
                         const infoBadge = document.createElement('span');
                         infoBadge.className = 'absolute bottom-1 right-1 bg-red-600/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded';
@@ -122,8 +170,17 @@
                     slideBadge.className = 'absolute top-1 left-1 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded';
                     slideBadge.innerText = `Hal ${index + 1}`;
                     
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white font-black text-[10px] rounded-full w-5 h-5 flex items-center justify-center shadow-md border border-black/50 transition-transform duration-150 hover:scale-110 cursor-pointer z-10';
+                    deleteBtn.innerHTML = '✕';
+                    deleteBtn.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                        removeFile(index);
+                    });
+                    
                     imgWrapper.appendChild(img);
                     imgWrapper.appendChild(slideBadge);
+                    imgWrapper.appendChild(deleteBtn);
                     previewContainer.appendChild(imgWrapper);
                 }
                 reader.readAsDataURL(file);
@@ -134,6 +191,8 @@
             if (uploadedFiles.length === 0) return;
 
             convertBtn.disabled = true;
+            resetBtn.disabled = true;
+            pdfNameInput.disabled = true;
             convertBtn.innerText = "Processing Dimensions...";
 
             let pdf;
@@ -142,15 +201,12 @@
                 const file = uploadedFiles[i];
                 const imageData = await loadImage(file);
                 
-                // Mengambil spesifikasi dimensi piksel asli dari file gambar
                 const img = await getImageDetails(imageData);
                 const imgWidth = img.width;
                 const imgHeight = img.height;
 
-                // Mengubah orientasi halaman pdf berdasarkan aspek rasio gambar asli
                 const orientation = imgWidth > imgHeight ? 'l' : 'p';
 
-                // Membuat halaman baru dengan ukuran kustom yang sama persis dengan piksel gambar (menggunakan unit pt/poin)
                 if (i === 0) {
                     pdf = new jsPDF({
                         orientation: orientation,
@@ -161,15 +217,23 @@
                     pdf.addPage([imgWidth, imgHeight], orientation);
                 }
 
-                // Memasukkan gambar secara penuh (0, 0) memenuhi halaman PDF kustom tersebut
                 pdf.addImage(imageData, 'JPEG', 0, 0, imgWidth, imgHeight);
             }
 
-            const fileName = uploadedFiles[0].name.split('.').slice(0, -1).join('.') + '_AutoFit.pdf';
-            pdf.save(fileName);
+            // Menentukan nama file berdasarkan input kustom pengguna
+            let finalFileName = pdfNameInput.value.trim();
+            if (finalFileName === "") {
+                // Jika input nama kosong, pakai nama default dari file pertama
+                finalFileName = uploadedFiles[0].name.split('.').slice(0, -1).join('.') + '_AutoFit';
+            }
+            
+            // Simpan file PDF
+            pdf.save(finalFileName + '.pdf');
 
             convertBtn.disabled = false;
-            convertBtn.innerText = "Convert & Download Smart PDF";
+            resetBtn.disabled = false;
+            pdfNameInput.disabled = false;
+            convertBtn.innerText = "Convert & Download PDF";
         });
 
         function loadImage(file) {
@@ -180,7 +244,6 @@
             });
         }
 
-        // Helper untuk mendapatkan resolusi asli gambar
         function getImageDetails(src) {
             return new Promise((resolve) => {
                 const img = new Image();
