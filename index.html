@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Irfan2PDF - Auto-Fit Page Size Converter</title>
+    <title>Irfan2PDF - Advanced Auto-Fit & Compression</title>
     <!-- Menggunakan Tailwind CSS untuk styling modern -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- Library jsPDF untuk konversi ke PDF -->
@@ -29,15 +29,49 @@
             </svg>
             
             <p class="text-gray-200 font-semibold text-sm uppercase tracking-wide">Drag & Drop Images Here</p>
-            <p class="text-xs text-gray-400 mt-1">Mendukung semua ukuran gambar (A4, F4, 16:9, Persegi, dll)</p>
+            <p class="text-xs text-gray-400 mt-1">Mendukung Ukuran Kustom, Kompresi Standar, dan Target < 500 KB</p>
         </div>
 
-        <!-- Bagian Input Nama & Preview (Hanya Muncul Jika Gambar Sudah Ada) -->
+        <!-- Bagian Pengaturan & Preview (Hanya Muncul Jika Gambar Sudah Ada) -->
         <div id="previewSection" class="hidden mb-6 text-left">
+            
             <!-- Input Nama File Kustom -->
             <div class="mb-4">
                 <label for="pdfNameInput" class="block text-xs uppercase tracking-wider text-red-400 font-bold mb-2">Nama File PDF Hasil</label>
                 <input type="text" id="pdfNameInput" placeholder="Masukkan nama file (Contoh: Irfan - Tugas PKn)" class="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-red-500 transition-colors duration-200">
+            </div>
+
+            <!-- Tiga Pilihan Kompresi Elegan -->
+            <div class="mb-5 bg-zinc-900 p-4 border border-zinc-800 rounded-xl">
+                <span class="block text-xs uppercase tracking-wider text-red-400 font-bold mb-3">Ukuran & Kualitas Hasil PDF</span>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <!-- Opsi 1: Kompres Standar -->
+                    <label class="flex items-center gap-3 p-3 bg-zinc-950 rounded-lg border border-zinc-800 cursor-pointer hover:border-red-500 transition-colors duration-150 group">
+                        <input type="radio" name="compressionOpt" value="compress" checked class="accent-red-600 h-4 w-4">
+                        <div>
+                            <p class="text-xs font-semibold text-white group-hover:text-red-400 transition-colors duration-150">Kompres Standar</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5">Hemat kuota & cepat</p>
+                        </div>
+                    </label>
+                    
+                    <!-- Opsi 2: Di bawah 500KB (Sudah Diperbaiki) -->
+                    <label class="flex items-center gap-3 p-3 bg-zinc-950 rounded-lg border border-zinc-800 cursor-pointer hover:border-red-500 transition-colors duration-150 group">
+                        <input type="radio" name="compressionOpt" value="extreme" class="accent-red-600 h-4 w-4">
+                        <div>
+                            <p class="text-xs font-semibold text-white group-hover:text-red-400 transition-colors duration-150">Ukuran Tugas (&lt;500KB)</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5">Rekomendasi pas untuk e-learning</p>
+                        </div>
+                    </label>
+
+                    <!-- Opsi 3: Kualitas Asli -->
+                    <label class="flex items-center gap-3 p-3 bg-zinc-950 rounded-lg border border-zinc-800 cursor-pointer hover:border-red-500 transition-colors duration-150 group">
+                        <input type="radio" name="compressionOpt" value="full" class="accent-red-600 h-4 w-4">
+                        <div>
+                            <p class="text-xs font-semibold text-white group-hover:text-red-400 transition-colors duration-150">Kualitas Full (Asli)</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5">Resolusi asli tanpa dikompres</p>
+                        </div>
+                    </label>
+                </div>
             </div>
 
             <p class="text-xs uppercase tracking-wider text-red-400 font-bold mb-3">Preview & Dimensi Asli</p>
@@ -190,20 +224,30 @@
         convertBtn.addEventListener('click', async () => {
             if (uploadedFiles.length === 0) return;
 
+            const selectedCompression = document.querySelector('input[name="compressionOpt"]:checked').value;
+
             convertBtn.disabled = true;
             resetBtn.disabled = true;
             pdfNameInput.disabled = true;
-            convertBtn.innerText = "Processing Dimensions...";
+            convertBtn.innerText = "Processing PDF...";
 
             let pdf;
 
             for (let i = 0; i < uploadedFiles.length; i++) {
                 const file = uploadedFiles[i];
-                const imageData = await loadImage(file);
+                let imageData = await loadImage(file);
                 
-                const img = await getImageDetails(imageData);
-                const imgWidth = img.width;
-                const imgHeight = img.height;
+                const imgDetails = await getImageDetails(imageData);
+                let imgWidth = imgDetails.width;
+                let imgHeight = imgDetails.height;
+
+                // Logika Khusus Kompresi Target Ukuran Maksimal 500 KB per halaman
+                if (selectedCompression === "extreme") {
+                    imageData = await compressToTargetSize(imgDetails, 500 * 1024); // Target disetel ke 500 KB
+                    const newDetails = await getImageDetails(imageData);
+                    imgWidth = newDetails.width;
+                    imgHeight = newDetails.height;
+                }
 
                 const orientation = imgWidth > imgHeight ? 'l' : 'p';
 
@@ -217,17 +261,18 @@
                     pdf.addPage([imgWidth, imgHeight], orientation);
                 }
 
-                pdf.addImage(imageData, 'JPEG', 0, 0, imgWidth, imgHeight);
+                if (selectedCompression === "compress" || selectedCompression === "extreme") {
+                    pdf.addImage(imageData, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
+                } else {
+                    pdf.addImage(imageData, 'JPEG', 0, 0, imgWidth, imgHeight, undefined, 'NONE');
+                }
             }
 
-            // Menentukan nama file berdasarkan input kustom pengguna
             let finalFileName = pdfNameInput.value.trim();
             if (finalFileName === "") {
-                // Jika input nama kosong, pakai nama default dari file pertama
-                finalFileName = uploadedFiles[0].name.split('.').slice(0, -1).join('.') + '_AutoFit';
+                finalFileName = uploadedFiles[0].name.split('.').slice(0, -1).join('.') + `_${selectedCompression}`;
             }
             
-            // Simpan file PDF
             pdf.save(finalFileName + '.pdf');
 
             convertBtn.disabled = false;
@@ -235,6 +280,46 @@
             pdfNameInput.disabled = false;
             convertBtn.innerText = "Convert & Download PDF";
         });
+
+        // Fungsi kompresi bertahap yang mengunci target di bawah 500 KB
+        function compressToTargetSize(imgElement, targetBytes) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                let width = imgElement.width;
+                let height = imgElement.height;
+                
+                // Pembatasan resolusi dasar agar proses kalkulasi lebih cepat
+                const maxDimension = 2000; 
+                if (width > maxDimension || height > maxDimension) {
+                    if (width > height) {
+                        height *= maxDimension / width;
+                        width = maxDimension;
+                    } else {
+                        width *= maxDimension / height;
+                        height = maxDimension;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(imgElement, 0, 0, width, height);
+
+                let quality = 0.85; // Memulai dari kualitas prima 85%
+                let dataUrl = canvas.toDataURL('image/jpeg', quality);
+                let currentSize = Math.round((dataUrl.split(',')[1].length * 3) / 4);
+
+                // Mengulang penurunan kualitas hanya jika file di atas 500 KB
+                while (currentSize > targetBytes && quality > 0.20) {
+                    quality -= 0.08; 
+                    dataUrl = canvas.toDataURL('image/jpeg', quality);
+                    currentSize = Math.round((dataUrl.split(',')[1].length * 3) / 4);
+                }
+
+                resolve(dataUrl);
+            });
+        }
 
         function loadImage(file) {
             return new Promise((resolve) => {
