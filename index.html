@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Irfan2PDF - Konverter JPG ke PDF Instan</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-900 via-slate-900 to-black min-h-screen flex flex-col items-center justify-center p-4 font-sans antialiased">
+
+    <div class="bg-black p-8 rounded-2xl shadow-[0_0_30px_rgba(239,68,68,0.2)] w-full max-w-xl text-center border-2 border-red-600">
+        
+        <h1 class="text-4xl font-black tracking-tight text-white mb-1">
+            Irfan<span class="text-red-500">2PDF</span>
+        </h1>
+        <p class="text-xs uppercase tracking-widest text-gray-400 font-medium mb-6">Instant & Secure Image-to-PDF Converter</p>
+
+        <div id="dropzone" class="border-2 border-dashed border-red-500 rounded-xl p-8 bg-zinc-900/50 hover:bg-zinc-900 hover:border-red-400 cursor-pointer transition-all duration-300 mb-6 group">
+            <input type="file" id="fileInput" accept="image/jpeg, image/png" multiple class="hidden">
+            
+            <svg class="mx-auto h-12 w-12 text-red-500 group-hover:scale-110 transition-transform duration-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            
+            <p class="text-gray-200 font-semibold text-sm uppercase tracking-wide">Drag & Drop Images Here</p>
+            <p class="text-xs text-gray-400 mt-1">or click to upload (JPG, JPEG, PNG)</p>
+        </div>
+
+        <div id="previewSection" class="hidden mb-6">
+            <p class="text-xs uppercase tracking-wider text-red-400 font-bold mb-3 text-left">Preview</p>
+            <div id="previewContainer" class="grid grid-cols-4 gap-3 max-h-40 overflow-y-auto p-2 bg-zinc-900 border border-zinc-800 rounded-lg"></div>
+        </div>
+
+        <button id="convertBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-[0_4px_20px_rgba(239,68,68,0.4)] tracking-wider text-sm uppercase transition-all duration-200 cursor-pointer disabled:bg-zinc-700 disabled:text-zinc-500 disabled:shadow-none disabled:cursor-not-allowed hidden">
+            Convert & Download PDF
+        </button>
+    </div>
+
+    <p class="text-[10px] uppercase tracking-widest text-gray-400 mt-6">100% Local Conversion • No Data Transferred to Server</p>
+
+    <script>
+        const { jsPDF } = window.jspdf;
+        
+        const fileInput = document.getElementById('fileInput');
+        const dropzone = document.getElementById('dropzone');
+        const previewSection = document.getElementById('previewSection');
+        const previewContainer = document.getElementById('previewContainer');
+        const convertBtn = document.getElementById('convertBtn');
+        
+        let uploadedFiles = [];
+
+        dropzone.addEventListener('click', () => fileInput.click());
+
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('bg-zinc-900', 'border-red-400');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('bg-zinc-900', 'border-red-400');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('bg-zinc-900', 'border-red-400');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            uploadedFiles = Array.from(files).filter(file => file.type === "image/jpeg" || file.type === "image/png");
+
+            if (uploadedFiles.length === 0) return;
+
+            previewContainer.innerHTML = '';
+            previewSection.classList.remove('hidden');
+            convertBtn.classList.remove('hidden');
+
+            uploadedFiles.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const imgWrapper = document.createElement('div');
+                    imgWrapper.className = 'relative aspect-square border border-zinc-700 rounded-md overflow-hidden bg-black shadow-sm';
+                    
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'w-full h-full object-cover';
+                    
+                    imgWrapper.appendChild(img);
+                    previewContainer.appendChild(imgWrapper);
+                }
+                reader.readAsDataURL(file);
+            });
+        }
+
+        convertBtn.addEventListener('click', async () => {
+            if (uploadedFiles.length === 0) return;
+
+            convertBtn.disabled = true;
+            convertBtn.innerText = "Processing...";
+
+            const pdf = new jsPDF();
+
+            for (let i = 0; i < uploadedFiles.length; i++) {
+                const file = uploadedFiles[i];
+                const imageData = await loadImage(file);
+                
+                const imgProps = pdf.getImageProperties(imageData);
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+                if (i > 0) {
+                    pdf.addPage();
+                }
+
+                pdf.addImage(imageData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+            }
+
+            const fileName = uploadedFiles[0].name.split('.').slice(0, -1).join('.') + '_Irfan2PDF.pdf';
+            pdf.save(fileName);
+
+            convertBtn.disabled = false;
+            convertBtn.innerText = "Convert & Download PDF";
+        });
+
+        function loadImage(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.readAsDataURL(file);
+            });
+        }
+    </script>
+</body>
+</html>
