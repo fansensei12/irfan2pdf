@@ -3,19 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Irfan2PDF - Konverter JPG ke PDF Instan</title>
+    <title>Irfan2PDF - Konverter Presentasi 16:9</title>
+    <!-- Menggunakan Tailwind CSS untuk styling modern -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Library jsPDF untuk konversi ke PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body class="bg-gradient-to-br from-blue-900 via-slate-900 to-black min-h-screen flex flex-col items-center justify-center p-4 font-sans antialiased">
 
-    <div class="bg-black p-8 rounded-2xl shadow-[0_0_30px_rgba(239,68,68,0.2)] w-full max-w-xl text-center border-2 border-red-600">
+    <!-- Kotak Utama -->
+    <div class="bg-black p-8 rounded-2xl shadow-[0_0_30px_rgba(239,68,68,0.2)] w-full max-w-2xl text-center border-2 border-red-600">
         
+        <!-- Nama Aplikasi -->
         <h1 class="text-4xl font-black tracking-tight text-white mb-1">
             Irfan<span class="text-red-500">2PDF</span>
         </h1>
-        <p class="text-xs uppercase tracking-widest text-gray-400 font-medium mb-6">Instant & Secure Image-to-PDF Converter</p>
+        <p class="text-xs uppercase tracking-widest text-gray-400 font-medium mb-6">Instant 16:9 Presentation PDF Converter</p>
 
+        <!-- Area Dropzone -->
         <div id="dropzone" class="border-2 border-dashed border-red-500 rounded-xl p-8 bg-zinc-900/50 hover:bg-zinc-900 hover:border-red-400 cursor-pointer transition-all duration-300 mb-6 group">
             <input type="file" id="fileInput" accept="image/jpeg, image/png" multiple class="hidden">
             
@@ -24,20 +29,24 @@
             </svg>
             
             <p class="text-gray-200 font-semibold text-sm uppercase tracking-wide">Drag & Drop Images Here</p>
-            <p class="text-xs text-gray-400 mt-1">or click to upload (JPG, JPEG, PNG)</p>
+            <p class="text-xs text-gray-400 mt-1">Saran: Gunakan gambar landscape untuk hasil presentasi terbaik</p>
         </div>
 
+        <!-- Pratinjau Gambar Berbanyak (Rasio Kotak Diperbaiki) -->
         <div id="previewSection" class="hidden mb-6">
-            <p class="text-xs uppercase tracking-wider text-red-400 font-bold mb-3 text-left">Preview</p>
-            <div id="previewContainer" class="grid grid-cols-4 gap-3 max-h-40 overflow-y-auto p-2 bg-zinc-900 border border-zinc-800 rounded-lg"></div>
+            <p class="text-xs uppercase tracking-wider text-red-400 font-bold mb-3 text-left">Preview Slides</p>
+            <!-- Menggunakan aspek rasio 16:9 pada grid preview agar konsisten -->
+            <div id="previewContainer" class="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-64 overflow-y-auto p-3 bg-zinc-900 border border-zinc-800 rounded-lg"></div>
         </div>
 
+        <!-- Tombol Aksi -->
         <button id="convertBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-[0_4px_20px_rgba(239,68,68,0.4)] tracking-wider text-sm uppercase transition-all duration-200 cursor-pointer disabled:bg-zinc-700 disabled:text-zinc-500 disabled:shadow-none disabled:cursor-not-allowed hidden">
-            Convert & Download PDF
+            Convert & Download 16:9 PDF
         </button>
     </div>
 
-    <p class="text-[10px] uppercase tracking-widest text-gray-400 mt-6">100% Local Conversion • No Data Transferred to Server</p>
+    <!-- Footer -->
+    <p class="text-[10px] uppercase tracking-widest text-gray-400 mt-6">100% Local Conversion • Custom 16:9 Presentation Format</p>
 
     <script>
         const { jsPDF } = window.jspdf;
@@ -80,17 +89,24 @@
             previewSection.classList.remove('hidden');
             convertBtn.classList.remove('hidden');
 
-            uploadedFiles.forEach(file => {
+            uploadedFiles.forEach((file, index) => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
+                    // Wrapper menggunakan aspek rasio video/presentasi (video aspect ratio)
                     const imgWrapper = document.createElement('div');
-                    imgWrapper.className = 'relative aspect-square border border-zinc-700 rounded-md overflow-hidden bg-black shadow-sm';
+                    imgWrapper.className = 'relative aspect-video border border-zinc-700 rounded-md overflow-hidden bg-black shadow-sm group';
                     
                     const img = document.createElement('img');
                     img.src = e.target.result;
-                    img.className = 'w-full h-full object-cover';
+                    img.className = 'w-full h-full object-contain bg-zinc-950'; // Menjaga gambar asli tidak terpotong
+                    
+                    // Indikator nomor slide
+                    const slideBadge = document.createElement('span');
+                    slideBadge.className = 'absolute top-1 left-1 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded';
+                    slideBadge.innerText = `Slide ${index + 1}`;
                     
                     imgWrapper.appendChild(img);
+                    imgWrapper.appendChild(slideBadge);
                     previewContainer.appendChild(imgWrapper);
                 }
                 reader.readAsDataURL(file);
@@ -101,30 +117,54 @@
             if (uploadedFiles.length === 0) return;
 
             convertBtn.disabled = true;
-            convertBtn.innerText = "Processing...";
+            convertBtn.innerText = "Processing Slides...";
 
-            const pdf = new jsPDF();
+            // Menginisialisasi jsPDF dengan format landscape ('l') dan unit milimeter ('mm')
+            // Ukuran ditentukan kustom untuk rasio 16:9 sempurna (297mm x 167.06mm)
+            const pdf = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: [297, 167.06]
+            });
+
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
 
             for (let i = 0; i < uploadedFiles.length; i++) {
                 const file = uploadedFiles[i];
                 const imageData = await loadImage(file);
                 
-                const imgProps = pdf.getImageProperties(imageData);
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
                 if (i > 0) {
-                    pdf.addPage();
+                    pdf.addPage([297, 167.06], 'landscape');
                 }
 
-                pdf.addImage(imageData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                // Mengatur kalkulasi agar posisi gambar berada tepat di tengah (center) slide PDF tanpa merusak proporsi aslinya
+                const imgProps = pdf.getImageProperties(imageData);
+                const ratio = imgProps.width / imgProps.height;
+                
+                let printWidth = pdfWidth;
+                let printHeight = pdfWidth / ratio;
+
+                if (printHeight > pdfHeight) {
+                    printHeight = pdfHeight;
+                    printWidth = pdfHeight * ratio;
+                }
+
+                const xXis = (pdfWidth - printWidth) / 2;
+                const yXis = (pdfHeight - printHeight) / 2;
+
+                // Mengisi background slide dengan warna hitam agar terlihat seperti presentasi bioskop/proyektor jika gambar tidak full
+                pdf.setFillColor(0, 0, 0);
+                pdf.rect(0, 0, pdfWidth, pdfHeight, 'F');
+
+                pdf.addImage(imageData, 'JPEG', xXis, yXis, printWidth, printHeight);
             }
 
-            const fileName = uploadedFiles[0].name.split('.').slice(0, -1).join('.') + '_Irfan2PDF.pdf';
+            const fileName = uploadedFiles[0].name.split('.').slice(0, -1).join('.') + '_Presentation.pdf';
             pdf.save(fileName);
 
             convertBtn.disabled = false;
-            convertBtn.innerText = "Convert & Download PDF";
+            convertBtn.innerText = "Convert & Download 16:9 PDF";
         });
 
         function loadImage(file) {
